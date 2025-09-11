@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     env: #
-      VITE_API_URL: "https://foyer-movies-egbsg0f2djaaguf7.francecentral-01.azurewebsites.net" 
+      VITE_API_URL: ${{ secrets.API_URL }} 
     steps:
       - uses: actions/checkout@v3
         with:
@@ -46,4 +46,5 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_CALM_GLACIER_098C22C03 }}
           action: "close"
+
 
