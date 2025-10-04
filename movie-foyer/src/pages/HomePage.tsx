@@ -43,12 +43,19 @@ export default function HomePage() {
 
     const handleVote = async (id) => {
         try {
-            await approveRequest(id, authFetch);
-            setRequests((prev) =>
-                prev.map((r) =>
+            setRequests((prev) => {
+                const updated = prev.map((r) =>
                     r.id === id ? { ...r, approvalCount: r.approvalCount + 1 } : r
-                )
-            );
+                );
+                return updated.sort((a, b) => b.approvalCount - a.approvalCount);
+            });
+
+            // appel API
+            await approveRequest(id, authFetch);
+
+            // refresh à jour back (optionnel)
+            fetchRequests();
+
             toast.success("Vote enregistré ✅");
         } catch (err) {
             console.error(err.message);
