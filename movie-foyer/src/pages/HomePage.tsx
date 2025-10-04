@@ -1,32 +1,35 @@
 import { useState, useEffect } from "react";
-import { ThumbsUp, Plus, Trash2 } from "lucide-react";
+import { ThumbsUp, Plus, Trash2, X } from "lucide-react";
 import { useRequestService } from "../services/requestService";
 import { approveRequest } from "../services/approvalService";
 import AddMovieModal from "../components/AddMovieModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import toast from "react-hot-toast";
 import { useAuthFetch } from "../hooks/useAuthFetch";
 import { useNavigate } from "react-router-dom";
 
+// ...imports restent identiques
+
 export default function HomePage() {
-    const { getAllRequests, deleteAllRequests } = useRequestService();
+    const { getAllRequests, deleteAllRequests, deleteRequest } = useRequestService();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ open: false, id: null, title: "" });
 
     const authFetch = useAuthFetch();
     const navigate = useNavigate();
 
     const token = localStorage.getItem("token");
     const isAdmin = localStorage.getItem("isAdmin") === "true";
+    const currentUser = localStorage.getItem("displayName");
 
     useEffect(() => {
         if (!token) {
             navigate("/login");
             return;
         }
-
         fetchRequests();
-
     }, []);
 
     const fetchRequests = async () => {
@@ -49,17 +52,24 @@ export default function HomePage() {
                 );
                 return updated.sort((a, b) => b.approvalCount - a.approvalCount);
             });
-
-            // appel API
             await approveRequest(id, authFetch);
-
-            // refresh à jour back (optionnel)
             fetchRequests();
-
             toast.success("Vote enregistré ✅");
         } catch (err) {
             console.error(err.message);
             toast.error("Erreur : " + err.message);
+        }
+    };
+
+    const handleDeleteRequest = async (id) => {
+        try {
+            await deleteRequest(id, authFetch);
+            toast.success("Requête supprimée ✅");
+            setRequests((prev) => prev.filter((r) => r.id !== id));
+        } catch (err) {
+            toast.error("Erreur : " + err.message);
+        } finally {
+            setConfirmModal({ open: false, id: null, title: "" });
         }
     };
 
@@ -80,7 +90,6 @@ export default function HomePage() {
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#E53A0C] text-center sm:text-left">
                     Soirée XVDeFrance 🎬
                 </h1>
-
                 <div className="flex gap-3">
                     {isAdmin && (
                         <button
@@ -115,16 +124,30 @@ export default function HomePage() {
 
                 {requests.length > 0 && (
                     <>
-                        {/* Film le plus voté - version cinéma */}
+                        {/* Film le plus voté */}
                         <div className="relative w-full mb-12">
-                            {/* Fond sombre / gradient */}
                             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/60 to-gray-900/80 rounded-3xl shadow-xl"></div>
 
                             <div className="relative flex flex-col sm:flex-row gap-6 p-6 rounded-3xl shadow-2xl bg-white/0 border-2 border-[#E53A0C]">
-                                {/* Badge */}
                                 <span className="absolute top-4 left-4 bg-[#E53A0C] text-white px-4 py-1 rounded-full font-bold shadow-md z-10">
-                    ⭐ Le plus voté
-                </span>
+                                    ⭐ Le plus voté
+                                </span>
+
+                                {/* Croix uniquement pour le créateur */}
+                                {requests[0].requestedBy === currentUser && (
+                                    <button
+                                        className="absolute top-4 right-4 bg-white/20 hover:bg-red-500/90 transition text-white hover:text-white rounded-full p-2 shadow-md backdrop-blur-sm cursor-pointer"
+                                        onClick={() =>
+                                            setConfirmModal({
+                                                open: true,
+                                                id: requests[0].id,
+                                                title: requests[0].movie.title,
+                                            })
+                                        }
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                )}
 
                                 <img
                                     src={requests[0].movie.posterUrl}
@@ -136,19 +159,19 @@ export default function HomePage() {
                                     <div>
                                         <h3 className="text-3xl sm:text-4xl font-extrabold mb-2 text-white">
                                             {requests[0].movie.title}{" "}
-                                            <span className="text-gray-300 text-xl">({requests[0].movie.year})</span>
+                                            <span className="text-gray-300 text-xl">
+                                                ({requests[0].movie.year})
+                                            </span>
                                         </h3>
                                         <p className="text-gray-300 mb-3">
                                             Proposé par : {requests[0].requestedBy || "Anonyme"}
                                         </p>
-                                        <p className="text-gray-100 text-lg">
-                                            {requests[0].movie.plot}
-                                        </p>
+                                        <p className="text-gray-100 text-lg">{requests[0].movie.plot}</p>
                                     </div>
                                     <div className="flex items-center justify-between mt-6">
-                        <span className="text-yellow-400 font-bold text-xl">
-                            {requests[0].approvalCount} votes
-                        </span>
+                                        <span className="text-yellow-400 font-bold text-xl">
+                                            {requests[0].approvalCount} votes
+                                        </span>
                                         <button
                                             className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-4 shadow-lg"
                                             onClick={() => handleVote(requests[0].id)}
@@ -160,13 +183,27 @@ export default function HomePage() {
                             </div>
                         </div>
 
-                        {/* Les autres films */}
+                        {/* Autres films */}
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {requests.slice(1).map((r) => (
                                 <div
                                     key={r.id}
-                                    className="bg-white rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition"
+                                    className="relative bg-white rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition"
                                 >
+                                    {r.requestedBy === currentUser && (
+                                        <button
+                                            className="absolute top-3 right-3 bg-red-50 hover:bg-red-100 transition text-red-600 rounded-full p-1.5 shadow-sm cursor-pointer"
+                                            onClick={() =>
+                                                setConfirmModal({
+                                                    open: true,
+                                                    id: r.id,
+                                                    title: r.movie.title,
+                                                })
+                                            }
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
                                     <img
                                         src={r.movie.posterUrl}
                                         alt={r.movie.title}
@@ -186,9 +223,9 @@ export default function HomePage() {
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-between">
-                            <span className="text-gray-700 font-medium">
-                                {r.approvalCount} votes
-                            </span>
+                                            <span className="text-gray-700 font-medium">
+                                                {r.approvalCount} votes
+                                            </span>
                                             <button
                                                 className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md"
                                                 onClick={() => handleVote(r.id)}
@@ -203,6 +240,13 @@ export default function HomePage() {
                     </>
                 )}
             </section>
+
+            <ConfirmDeleteModal
+                isOpen={confirmModal.open}
+                onClose={() => setConfirmModal({ open: false, id: null, title: "" })}
+                onConfirm={() => handleDeleteRequest(confirmModal.id)}
+                title={confirmModal.title}
+            />
 
             {loading && <p className="mt-6 text-gray-500">Chargement...</p>}
         </div>
