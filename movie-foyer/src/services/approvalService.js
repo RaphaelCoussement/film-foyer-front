@@ -1,12 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function approveRequest(requestId, token) {
-    const response = await fetch(`${API_URL}/api/approvals/${requestId}`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        }
+export async function approveRequest(requestId, authFetch) {
+    const response = await authFetch(`${API_URL}/approvals/${requestId}`, {
+        method: "POST"
     });
 
     if (!response.ok) {
@@ -14,5 +10,5 @@ export async function approveRequest(requestId, token) {
         throw new Error(errorData.message || "Erreur lors de l'approbation");
     }
 
-    return await response.json();
+    return response.json();
 }

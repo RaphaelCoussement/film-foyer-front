@@ -1,26 +1,24 @@
 import { useState } from "react";
-import { getNextSaturday, isSaturday } from "../utils/dateUtils";
 import { useRequestService } from "../services/requestService";
+import { useAuthFetch } from "../hooks/useAuthFetch";
 
 export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
     const [title, setTitle] = useState("");
-    const [date, setDate] = useState(getNextSaturday());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const { createRequest } = useRequestService();
+    const authFetch = useAuthFetch();
 
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title) return;
-        if (!isSaturday(date)) return setError("Veuillez choisir un samedi");
 
         try {
             setLoading(true);
-            await createRequest(title, date);
+            await createRequest(title, authFetch);
             setTitle("");
-            setDate(getNextSaturday());
             setError("");
             onSuccess?.();
             onClose();
@@ -50,19 +48,6 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                             placeholder="Ex: Inception"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="border rounded-xl px-4 py-2 w-full focus:ring-2 focus:ring-[#E53A0C] outline-none transition"
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Date (samedi uniquement)
-                        </label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
                             className="border rounded-xl px-4 py-2 w-full focus:ring-2 focus:ring-[#E53A0C] outline-none transition"
                             required
                         />

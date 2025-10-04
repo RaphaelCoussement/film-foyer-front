@@ -1,26 +1,38 @@
 import { useState, useEffect } from "react";
-import { ThumbsUp, Plus } from "lucide-react";
+import { ThumbsUp, Plus, Trash2 } from "lucide-react";
 import { useRequestService } from "../services/requestService";
 import { approveRequest } from "../services/approvalService";
-import { getNextSaturday, isSaturday } from "../utils/dateUtils";
 import AddMovieModal from "../components/AddMovieModal";
 import toast from "react-hot-toast";
+import { useAuthFetch } from "../hooks/useAuthFetch";
+import { useNavigate } from "react-router-dom";
 
 export default function HomePage() {
-    const { getRequestsByDate } = useRequestService();
-    const [selectedDate, setSelectedDate] = useState(getNextSaturday());
+    const { getAllRequests, deleteAllRequests } = useRequestService();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
-        fetchRequests(selectedDate);
-    }, [selectedDate]);
+    const authFetch = useAuthFetch();
+    const navigate = useNavigate();
 
-    const fetchRequests = async (date) => {
+    const token = localStorage.getItem("token");
+    const isAdmin = localStorage.getItem("isAdmin") === "true";
+
+    useEffect(() => {
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        fetchRequests();
+
+    }, []);
+
+    const fetchRequests = async () => {
         try {
             setLoading(true);
-            const data = await getRequestsByDate(date);
+            const data = await getAllRequests(authFetch);
             setRequests(data);
         } catch (err) {
             console.error(err);
@@ -31,34 +43,27 @@ export default function HomePage() {
 
     const handleVote = async (id) => {
         try {
-            const token = localStorage.getItem("token");
-            if (!token) throw new Error("Utilisateur non connecté");
-
-            await approveRequest(id, token);
-
+            await approveRequest(id, authFetch);
             setRequests((prev) =>
                 prev.map((r) =>
                     r.id === id ? { ...r, approvalCount: r.approvalCount + 1 } : r
                 )
             );
-
             toast.success("Vote enregistré ✅");
         } catch (err) {
             console.error(err.message);
-            toast.error(err.message);
+            toast.error("Erreur : " + err.message);
         }
     };
 
-    const winner =
-        requests.length > 0
-            ? requests.reduce((max, r) =>
-                r.approvalCount > max.approvalCount ? r : max
-            )
-            : null;
-
-    const handleDateChange = (e) => {
-        const date = e.target.value;
-        if (isSaturday(date)) setSelectedDate(date);
+    const handleClearRequests = async () => {
+        try {
+            await deleteAllRequests(authFetch);
+            toast.success("Toutes les requêtes ont été supprimées ✅");
+            setRequests([]);
+        } catch (err) {
+            toast.error("Erreur : " + err.message);
+        }
     };
 
     return (
@@ -68,106 +73,128 @@ export default function HomePage() {
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#E53A0C] text-center sm:text-left">
                     FilmFoyerPGF 🎬
                 </h1>
-                <button
-                    className="flex items-center gap-2 bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-xl px-4 sm:px-5 py-2 shadow-md w-full sm:w-auto justify-center"
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    <Plus className="w-5 h-5" />
-                    Proposer un film
-                </button>
+
+                <div className="flex gap-3">
+                    {isAdmin && (
+                        <button
+                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition text-white rounded-xl px-4 py-2 shadow-md"
+                            onClick={handleClearRequests}
+                        >
+                            <Trash2 className="w-5 h-5" />
+                            Supprimer tout
+                        </button>
+                    )}
+                    <button
+                        className="flex items-center gap-2 bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-xl px-4 py-2 shadow-md"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <Plus className="w-5 h-5" />
+                        Proposer un film
+                    </button>
+                </div>
             </header>
 
             <AddMovieModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={() => fetchRequests(selectedDate)}
+                onSuccess={fetchRequests}
             />
 
-            {/* Sélecteur de date */}
-            <section className="w-full max-w-6xl mb-10">
-                <label className="block mb-2 text-base sm:text-lg font-medium text-gray-700">
-                    Choisir un samedi :
-                </label>
-                <input
-                    type="date"
-                    className="w-full sm:w-64 bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E53A0C]"
-                    value={selectedDate}
-                    onChange={handleDateChange}
-                />
-            </section>
-
+            {/* Liste des suggestions */}
             <section className="w-full max-w-6xl mb-14">
                 <h2 className="text-xl sm:text-2xl font-bold mb-6 text-[#E53A0C]">
-                    🎥 Film du samedi
+                    📌 Suggestions en cours
                 </h2>
-                {winner ? (
-                    <div className="bg-white shadow-md rounded-2xl p-5 sm:p-8 flex flex-col lg:flex-row items-center gap-8 hover:shadow-lg transition">
-                        <img
-                            src={winner.movie.posterUrl}
-                            alt={winner.movie.title}
-                            className="w-40 sm:w-48 lg:w-56 rounded-xl shadow-md object-cover"
-                        />
-                        <div className="text-center lg:text-left flex-1">
-                            <h3 className="text-2xl sm:text-3xl font-extrabold mb-4">
-                                {winner.movie.title}{" "}
-                                <span className="text-gray-500">({winner.movie.year})</span>
-                            </h3>
-                            <p className="text-gray-600 mb-4 text-sm sm:text-base leading-relaxed max-w-2xl">
-                                {winner.movie.plot}
-                            </p>
-                            <p className="text-sm text-gray-500 font-medium">
-                                Avec {winner.approvalCount} votes
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-gray-500">Aucun film proposé pour cette date.</p>
-                )}
-            </section>
 
-            {/* Suggestions desktop */}
-            <section className="w-full max-w-6xl">
-                <h2 className="text-xl sm:text-2xl font-bold mb-6 text-[#E53A0C]">
-                    📌 Suggestions de la semaine
-                </h2>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {requests
-                        .sort((a, b) => b.approvalCount - a.approvalCount)
-                        .map((r) => (
-                            <div
-                                key={r.id}
-                                className="bg-white rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition"
-                            >
+                {requests.length > 0 && (
+                    <>
+                        {/* Film le plus voté - version cinéma */}
+                        <div className="relative w-full mb-12">
+                            {/* Fond sombre / gradient */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/60 to-gray-900/80 rounded-3xl shadow-xl"></div>
+
+                            <div className="relative flex flex-col sm:flex-row gap-6 p-6 rounded-3xl shadow-2xl bg-white/0 border-2 border-[#E53A0C]">
+                                {/* Badge */}
+                                <span className="absolute top-4 left-4 bg-[#E53A0C] text-white px-4 py-1 rounded-full font-bold shadow-md z-10">
+                    ⭐ Le plus voté
+                </span>
+
                                 <img
-                                    src={r.movie.posterUrl}
-                                    alt={r.movie.title}
-                                    className="w-full h-64 object-cover rounded-xl mb-4 shadow-sm"
+                                    src={requests[0].movie.posterUrl}
+                                    alt={requests[0].movie.title}
+                                    className="w-full sm:w-72 h-96 object-cover rounded-xl shadow-lg z-10"
                                 />
-                                <div className="flex-1 flex flex-col justify-between">
+
+                                <div className="flex-1 flex flex-col justify-between z-10">
                                     <div>
-                                        <h3 className="text-lg font-semibold mb-1">
-                                            {r.movie.title}{" "}
-                                            <span className="text-gray-500">({r.movie.year})</span>
+                                        <h3 className="text-3xl sm:text-4xl font-extrabold mb-2 text-white">
+                                            {requests[0].movie.title}{" "}
+                                            <span className="text-gray-300 text-xl">({requests[0].movie.year})</span>
                                         </h3>
-                                        <p className="text-gray-600 text-sm line-clamp-3 mb-3">
-                                            {r.movie.plot}
+                                        <p className="text-gray-300 mb-3">
+                                            Proposé par : {requests[0].requestedBy || "Anonyme"}
+                                        </p>
+                                        <p className="text-gray-100 text-lg">
+                                            {requests[0].movie.plot}
                                         </p>
                                     </div>
-                                    <div className="flex items-center justify-between">
-              <span className="text-gray-700 font-medium">
-                {r.approvalCount} votes
-              </span>
+                                    <div className="flex items-center justify-between mt-6">
+                        <span className="text-yellow-400 font-bold text-xl">
+                            {requests[0].approvalCount} votes
+                        </span>
                                         <button
-                                            className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md"
-                                            onClick={() => handleVote(r.id)}
+                                            className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-4 shadow-lg"
+                                            onClick={() => handleVote(requests[0].id)}
                                         >
-                                            <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                            <ThumbsUp className="w-6 h-6" />
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                </div>
+                        </div>
+
+                        {/* Les autres films */}
+                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                            {requests.slice(1).map((r) => (
+                                <div
+                                    key={r.id}
+                                    className="bg-white rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition"
+                                >
+                                    <img
+                                        src={r.movie.posterUrl}
+                                        alt={r.movie.title}
+                                        className="w-full h-64 object-cover rounded-xl mb-4 shadow-sm"
+                                    />
+                                    <div className="flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-1">
+                                                {r.movie.title}{" "}
+                                                <span className="text-gray-500">({r.movie.year})</span>
+                                            </h3>
+                                            <p className="text-gray-500 text-sm mb-2">
+                                                Proposé par : {r.requestedBy || "Anonyme"}
+                                            </p>
+                                            <p className="text-gray-600 text-sm line-clamp-3 mb-3">
+                                                {r.movie.plot}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                            <span className="text-gray-700 font-medium">
+                                {r.approvalCount} votes
+                            </span>
+                                            <button
+                                                className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md"
+                                                onClick={() => handleVote(r.id)}
+                                            >
+                                                <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
             </section>
 
             {loading && <p className="mt-6 text-gray-500">Chargement...</p>}

@@ -5,7 +5,7 @@ export function useAuthService() {
     const authFetch = useAuthFetch();
 
     const register = async (registerDto) => {
-        const response = await authFetch(`${API_URL}/api/auth/register`, {
+        const response = await authFetch(`${API_URL}/auth/register`, {
             method: "POST",
             body: JSON.stringify(registerDto),
         });
@@ -15,7 +15,7 @@ export function useAuthService() {
     };
 
     const login = async (loginDto) => {
-        const response = await authFetch(`${API_URL}/api/auth/login`, {
+        const response = await authFetch(`${API_URL}/auth/login`, {
             method: "POST",
             body: JSON.stringify(loginDto),
         });

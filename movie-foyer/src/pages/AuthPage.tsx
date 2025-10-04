@@ -25,6 +25,7 @@ export default function AuthPage() {
                 const res = await login(dto);
                 localStorage.setItem("token", res.token);
                 localStorage.setItem("displayName", res.displayName);
+                localStorage.setItem("isAdmin", res.isAdmin);
                 navigate("/");
             } else {
                 const dto = new RegisterDto(email, password, displayName);
