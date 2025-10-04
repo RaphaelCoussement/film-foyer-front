@@ -71,7 +71,7 @@ export default function HomePage() {
             {/* Header */}
             <header className="w-full max-w-6xl flex flex-col sm:flex-row justify-between items-center gap-4 mb-10">
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#E53A0C] text-center sm:text-left">
-                    FilmFoyerPGF 🎬
+                    Soirée XVDeFrance 🎬
                 </h1>
 
                 <div className="flex gap-3">
