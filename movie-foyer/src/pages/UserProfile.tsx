@@ -103,7 +103,6 @@ export default function UserProfile() {
                     {/* Infos utilisateur */}
                     <div className="flex-1 bg-gray-50 rounded-xl p-4 sm:p-6 shadow-sm">
                         <p className="text-gray-700 mb-2"><b>Email :</b> {user.email}</p>
-                        <p className="text-gray-700"><b>Admin :</b> {user.isAdmin ? "Oui" : "Non"}</p>
                     </div>
 
                     {/* Modifier nom et mot de passe */}

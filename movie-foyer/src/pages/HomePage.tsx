@@ -102,7 +102,7 @@ export default function HomePage() {
                 <div className="flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-end w-full sm:w-auto">
                     {isAdmin && (
                         <button
-                            className="flex items-center gap-1 sm:gap-2 bg-red-600 hover:bg-red-700 transition text-white rounded-xl px-3 sm:px-4 py-2 shadow-md text-sm sm:text-base"
+                            className="flex items-center gap-1 sm:gap-2 bg-red-600 hover:bg-red-700 transition text-white rounded-xl px-3 sm:px-4 py-2 shadow-md text-sm sm:text-base cursor-pointer"
                             onClick={handleClearRequests}
                         >
                             <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -110,7 +110,7 @@ export default function HomePage() {
                         </button>
                     )}
                     <button
-                        className="flex items-center gap-1 sm:gap-2 bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-xl px-3 sm:px-4 py-2 shadow-md text-sm sm:text-base"
+                        className="flex items-center gap-1 sm:gap-2 bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-xl px-3 sm:px-4 py-2 shadow-md text-sm sm:text-base cursor-pointer"
                         onClick={() => setIsModalOpen(true)}
                     >
                         <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
