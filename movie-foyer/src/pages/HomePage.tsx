@@ -136,7 +136,7 @@ export default function HomePage() {
                                 {/* Croix uniquement pour le créateur */}
                                 {requests[0].requestedBy === currentUser && (
                                     <button
-                                        className="absolute top-4 right-4 bg-white/20 hover:bg-red-500/90 transition text-white hover:text-white rounded-full p-2 shadow-md backdrop-blur-sm cursor-pointer"
+                                        className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-600/80 hover:bg-red-700 transition text-white rounded-full p-2.5 sm:p-2 shadow-lg active:scale-95 cursor-pointer z-[9999]"
                                         onClick={() =>
                                             setConfirmModal({
                                                 open: true,
@@ -145,7 +145,7 @@ export default function HomePage() {
                                             })
                                         }
                                     >
-                                        <X className="w-5 h-5" />
+                                        <X className="w-6 h-6 sm:w-5 sm:h-5" />
                                     </button>
                                 )}
 
@@ -192,7 +192,7 @@ export default function HomePage() {
                                 >
                                     {r.requestedBy === currentUser && (
                                         <button
-                                            className="absolute top-3 right-3 bg-red-50 hover:bg-red-100 transition text-red-600 rounded-full p-1.5 shadow-sm cursor-pointer"
+                                            className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600/90 hover:bg-red-700 transition text-white rounded-full p-2 shadow-md active:scale-95 cursor-pointer"
                                             onClick={() =>
                                                 setConfirmModal({
                                                     open: true,
@@ -201,7 +201,7 @@ export default function HomePage() {
                                                 })
                                             }
                                         >
-                                            <X className="w-4 h-4" />
+                                            <X className="w-5 h-5 sm:w-4 sm:h-4" />
                                         </button>
                                     )}
                                     <img
