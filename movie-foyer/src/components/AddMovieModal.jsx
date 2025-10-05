@@ -5,6 +5,7 @@ import { useAuthFetch } from "../hooks/useAuthFetch";
 
 export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
     const [title, setTitle] = useState("");
+    const [selectedMovie, setSelectedMovie] = useState(null); // stockera le film complet avec GUID
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [searchResults, setSearchResults] = useState([]);
@@ -14,6 +15,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
     const { searchMovies } = useMovieService();
     const authFetch = useAuthFetch();
 
+    // Débounce search
     useEffect(() => {
         if (!title) {
             setSearchResults([]);
@@ -27,6 +29,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
         return () => clearTimeout(delayDebounce);
     }, [title]);
 
+    // Recherche via TMDb
     const handleSearch = async (query) => {
         try {
             setSearchLoading(true);
@@ -40,19 +43,26 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
         }
     };
 
+    // Sélection du film
     const handleSelectMovie = (movie) => {
+        setSelectedMovie(movie);
         setTitle(movie.title);
         setSearchResults([]);
     };
 
+    // Soumission de la demande
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!title) return;
+        if (!selectedMovie) return;
 
         try {
             setLoading(true);
-            await createRequest(title, authFetch);
+
+            // ✅ On envoie TMDb Id si le film n'a pas de GUID en base
+            await createRequest({ TmdbId: selectedMovie.tmdbId || selectedMovie.id }, authFetch);
+
             setTitle("");
+            setSelectedMovie(null);
             setError("");
             onSuccess?.();
             onClose();
@@ -92,7 +102,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                             <ul className="absolute z-50 bg-white border border-gray-200 rounded-xl mt-2 w-full max-h-72 overflow-y-auto shadow-lg">
                                 {searchResults.map((movie) => (
                                     <li
-                                        key={movie.tmdbId || movie.id}
+                                        key={movie.id}
                                         className="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer transition"
                                         onClick={() => handleSelectMovie(movie)}
                                     >

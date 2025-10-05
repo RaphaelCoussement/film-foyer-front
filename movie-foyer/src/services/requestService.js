@@ -21,12 +21,10 @@ export function useRequestService() {
         if (!response.ok) throw new Error("Échec de la suppression");
     };
 
-    // Ajout de createRequest
-    const createRequest = async (title, authFetch) => {
-        const body = { title };
+    const createRequest = async (data, authFetch) => {
         const response = await authFetch(`${API_BASE_URL}/request`, {
             method: "POST",
-            body: JSON.stringify(body),
+            body: JSON.stringify(data),
         });
         if (!response.ok) throw new Error("Erreur lors de la proposition de film");
         return response.json();

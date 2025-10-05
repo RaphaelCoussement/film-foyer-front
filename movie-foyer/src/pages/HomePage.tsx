@@ -7,8 +7,7 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import toast from "react-hot-toast";
 import { useAuthFetch } from "../hooks/useAuthFetch";
 import { useNavigate } from "react-router-dom";
-
-// ...imports restent identiques
+import { formatDuration } from "../utils/timeUtils";
 
 export default function HomePage() {
     const { getAllRequests, deleteAllRequests, deleteRequest } = useRequestService();
@@ -128,7 +127,7 @@ export default function HomePage() {
                         <div className="relative w-full mb-12">
                             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/60 to-gray-900/80 rounded-3xl shadow-xl"></div>
 
-                            <div className="relative flex flex-col sm:flex-row gap-6 p-6 rounded-3xl shadow-2xl bg-white/0 border-2 border-[#E53A0C]">
+                            <div className="relative flex flex-col sm:flex-row gap-6 p-6 rounded-3xl shadow-2xl bg-white/0 border-2 border-[#E53A0C] z-10">
                                 <span className="absolute top-4 left-4 bg-[#E53A0C] text-white px-4 py-1 rounded-full font-bold shadow-md z-10">
                                     ⭐ Le plus voté
                                 </span>
@@ -136,7 +135,7 @@ export default function HomePage() {
                                 {/* Croix uniquement pour le créateur */}
                                 {requests[0].requestedBy === currentUser && (
                                     <button
-                                        className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-600/80 hover:bg-red-700 transition text-white rounded-full p-2.5 sm:p-2 shadow-lg active:scale-95 cursor-pointer z-[9999]"
+                                        className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-600/80 hover:bg-red-700 transition text-white rounded-full p-2.5 sm:p-2 shadow-lg active:scale-95 cursor-pointer z-20"
                                         onClick={() =>
                                             setConfirmModal({
                                                 open: true,
@@ -161,6 +160,7 @@ export default function HomePage() {
                                             {requests[0].movie.title}{" "}
                                             <span className="text-gray-300 text-xl">
                                                 ({requests[0].movie.year})
+                                                {requests[0].movie.duration ? ` • ${formatDuration(requests[0].movie.duration)}` : ""}
                                             </span>
                                         </h3>
                                         <p className="text-gray-300 mb-3">
@@ -192,7 +192,7 @@ export default function HomePage() {
                                 >
                                     {r.requestedBy === currentUser && (
                                         <button
-                                            className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600/90 hover:bg-red-700 transition text-white rounded-full p-2 shadow-md active:scale-95 cursor-pointer"
+                                            className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600/90 hover:bg-red-700 transition text-white rounded-full p-2 shadow-md active:scale-95 cursor-pointer z-20"
                                             onClick={() =>
                                                 setConfirmModal({
                                                     open: true,
@@ -213,7 +213,10 @@ export default function HomePage() {
                                         <div>
                                             <h3 className="text-lg font-semibold mb-1">
                                                 {r.movie.title}{" "}
-                                                <span className="text-gray-500">({r.movie.year})</span>
+                                                <span className="text-gray-500">
+                                                    ({r.movie.year})
+                                                    {r.movie.duration ? ` • ${formatDuration(r.movie.duration)}` : ""}
+                                                </span>
                                             </h3>
                                             <p className="text-gray-500 text-sm mb-2">
                                                 Proposé par : {r.requestedBy || "Anonyme"}
