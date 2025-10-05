@@ -16,6 +16,9 @@ export default function UserProfile() {
     const [favorites, setFavorites] = useState([]);
     const [loading, setLoading] = useState(true);
     const [passwordData, setPasswordData] = useState({ oldPassword: "", newPassword: "" });
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -129,20 +132,46 @@ export default function UserProfile() {
                         <div className="bg-gray-50 rounded-xl p-4 sm:p-6 shadow-sm">
                             <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3 text-[#E53A0C]">Changer le mot de passe</h2>
                             <div className="flex flex-col gap-2 sm:gap-3">
-                                <input
-                                    type="password"
-                                    placeholder="Ancien mot de passe"
-                                    value={passwordData.oldPassword}
-                                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 sm:py-2.5"
-                                />
-                                <input
-                                    type="password"
-                                    placeholder="Nouveau mot de passe"
-                                    value={passwordData.newPassword}
-                                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                    className="border border-gray-300 rounded-lg px-3 py-2 sm:py-2.5"
-                                />
+                                {/* Ancien mot de passe */}
+                                <div className="relative w-full">
+                                    <input
+                                        type={showOldPassword ? "text" : "password"}
+                                        placeholder="Ancien mot de passe"
+                                        value={passwordData.oldPassword}
+                                        onChange={(e) =>
+                                            setPasswordData({ ...passwordData, oldPassword: e.target.value })
+                                        }
+                                        className="border border-gray-300 rounded-lg px-3 py-2 sm:py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-[#E53A0C]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowOldPassword(!showOldPassword)}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                                    >
+                                        {showOldPassword ? "🙈" : "👁️"}
+                                    </button>
+                                </div>
+
+                                {/* Nouveau mot de passe */}
+                                <div className="relative w-full">
+                                    <input
+                                        type={showNewPassword ? "text" : "password"}
+                                        placeholder="Nouveau mot de passe"
+                                        value={passwordData.newPassword}
+                                        onChange={(e) =>
+                                            setPasswordData({ ...passwordData, newPassword: e.target.value })
+                                        }
+                                        className="border border-gray-300 rounded-lg px-3 py-2 sm:py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-[#E53A0C]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                                    >
+                                        {showNewPassword ? "🙈" : "👁️"}
+                                    </button>
+                                </div>
+
                                 <button
                                     onClick={handleChangePassword}
                                     className="self-start bg-[#E53A0C] hover:bg-[#c7320a] text-white rounded-lg px-4 py-2 sm:py-2.5"
