@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Trash2, ArrowLeft, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AddWishlistModal from "../components/AddWishlistModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import { formatDuration } from "../utils/timeUtils";
 
 export default function UserProfile() {
@@ -14,18 +15,26 @@ export default function UserProfile() {
     const userService = useUserService();
     const wishlistService = useWishlistService();
 
+
     const [user, setUser] = useState(null);
     const [displayName, setDisplayName] = useState("");
     const [requests, setRequests] = useState([]);
     const [favorites, setFavorites] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [wishlist, setWishlist] = useState([]);
+
+    const [loadingProfile, setLoadingProfile] = useState(true);
+    const [wishlistLoading, setWishlistLoading] = useState(false);
+    const [favoritesLoading, setFavoritesLoading] = useState(false);
+    const [requestsLoading, setRequestsLoading] = useState(false);
+
     const [passwordData, setPasswordData] = useState({ oldPassword: "", newPassword: "" });
     const [showOldPassword, setShowOldPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
 
-    const [wishlist, setWishlist] = useState([]);
     const [isWishlistModalOpen, setIsWishlistModalOpen] = useState(false);
 
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState({ type: "", id: null, title: "" });
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -38,25 +47,94 @@ export default function UserProfile() {
 
     const fetchProfile = async () => {
         try {
-            setLoading(true);
+            setLoadingProfile(true);
             const dataUser = await userService.getProfile(authFetch);
             setUser(dataUser);
             setDisplayName(dataUser.displayName);
 
-            const dataReq = await userService.getUserRequests(authFetch);
-            setRequests(dataReq);
-
-            const dataFav = await userService.getFavorites(authFetch);
-            setFavorites(dataFav);
-
-            const dataWishlist = await wishlistService.getAll(authFetch);
-            setWishlist(dataWishlist);
-
+            await Promise.all([
+                fetchRequests(),
+                fetchFavorites(),
+                fetchWishlist()
+            ]);
         } catch (err) {
             console.error(err);
             toast.error("Erreur lors du chargement du profil");
         } finally {
-            setLoading(false);
+            setLoadingProfile(false);
+        }
+    };
+
+    const fetchWishlist = async () => {
+        try {
+            setWishlistLoading(true);
+            const dataWishlist = await wishlistService.getAll(authFetch);
+            setWishlist(dataWishlist);
+        } catch (err) {
+            console.error(err);
+            toast.error("Erreur lors du chargement de la wishlist");
+        } finally {
+            setWishlistLoading(false);
+        }
+    };
+
+    const fetchRequests = async () => {
+        try {
+            setRequestsLoading(true);
+            const dataReq = await userService.getUserRequests(authFetch);
+            setRequests(dataReq);
+        } catch (err) {
+            console.error(err);
+            toast.error("Erreur lors du chargement des requêtes");
+        } finally {
+            setRequestsLoading(false);
+        }
+    };
+
+    const fetchFavorites = async () => {
+        try {
+            setFavoritesLoading(true);
+            const dataFav = await userService.getFavorites(authFetch);
+            setFavorites(dataFav);
+        } catch (err) {
+            console.error(err);
+            toast.error("Erreur lors du chargement des favoris");
+        } finally {
+            setFavoritesLoading(false);
+        }
+    };
+
+    // Handlers pour update partielle
+    const handleRemoveFavorite = async (movieId) => {
+        try {
+            await userService.removeFavorite(movieId, authFetch);
+            toast.success("Film retiré des favoris 🎬");
+            fetchFavorites();
+        } catch {
+            toast.error("Erreur lors de la suppression du favori");
+        }
+    };
+
+    const handleRemoveWishlist = async (id) => {
+        try {
+            await wishlistService.removeMovie(id, authFetch);
+            toast.success("Film retiré de la wishlist 🎬");
+            fetchWishlist();
+            fetchRequests();
+        } catch {
+            toast.error("Erreur lors de la suppression du film de la wishlist");
+        }
+    };
+
+    const handleSuggestWishlist = async (movieId) => {
+        try {
+            await wishlistService.suggestMovie(movieId, authFetch);
+            toast.success("Film suggéré pour la prochaine séance ✅");
+            fetchWishlist();
+            fetchRequests();
+        } catch (err) {
+            console.error(err);
+            toast.error(err.message || "Erreur lors de la suggestion du film");
         }
     };
 
@@ -64,7 +142,6 @@ export default function UserProfile() {
         try {
             await userService.updateDisplayName(displayName, authFetch);
             toast.success("Nom mis à jour ✅");
-            fetchProfile();
         } catch {
             toast.error("Erreur lors de la mise à jour du nom");
         }
@@ -84,39 +161,19 @@ export default function UserProfile() {
         }
     };
 
-    const handleRemoveFavorite = async (movieId) => {
-        try {
-            await userService.removeFavorite(movieId, authFetch);
-            toast.success("Film retiré des favoris 🎬");
-            fetchProfile();
-        } catch {
-            toast.error("Erreur lors de la suppression du favori");
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget.id || !deleteTarget.type) return;
+
+        if (deleteTarget.type === "favorite") {
+            await handleRemoveFavorite(deleteTarget.id);
+        } else if (deleteTarget.type === "wishlist") {
+            await handleRemoveWishlist(deleteTarget.id);
         }
+
+        setConfirmModalOpen(false);
     };
 
-    const handleRemoveWishlist = async (id) => {
-        try {
-            await wishlistService.removeMovie(id, authFetch);
-            toast.success("Film retiré de la wishlist 🎬");
-            fetchProfile();
-        } catch {
-            toast.error("Erreur lors de la suppression du film de la wishlist");
-        }
-    };
-
-    const handleSuggestWishlist = async (movieId) => {
-        try {
-            await wishlistService.suggestMovie(movieId, authFetch);
-            toast.success("Film suggéré pour la prochaine séance ✅");
-            fetchProfile(); // rafraîchir wishlist et requests
-        } catch (err) {
-            console.error(err);
-            toast.error(err.message || "Erreur lors de la suggestion du film");
-        }
-    };
-
-
-    if (loading) return <p className="text-gray-600 mt-10 text-center">Chargement...</p>;
+    if (loadingProfile) return <p className="text-gray-600 mt-10 text-center">Chargement...</p>;
     if (!user) return null;
 
     return (
@@ -131,7 +188,7 @@ export default function UserProfile() {
                 </button>
             </div>
 
-            {/* Card profil */}
+            {/* Profil */}
             <div className="w-full max-w-4xl bg-white rounded-3xl shadow-xl p-6 sm:p-8 mb-12">
                 <h1 className="text-3xl sm:text-4xl font-bold text-[#E53A0C] mb-6 text-center sm:text-left">👤 Mon Profil</h1>
 
@@ -220,7 +277,9 @@ export default function UserProfile() {
             {/* Requêtes */}
             <div className="w-full max-w-4xl mb-12">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-[#E53A0C]">📬 Mes Requêtes</h2>
-                {requests.length === 0 ? (
+                {requestsLoading ? (
+                    <p className="text-gray-600">Chargement des requêtes...</p>
+                ) : requests.length === 0 ? (
                     <p className="text-gray-500">Aucune requête envoyée.</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -237,7 +296,9 @@ export default function UserProfile() {
             {/* Favoris */}
             <div className="w-full max-w-4xl mb-12">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-[#E53A0C]">❤️ Mes Favoris</h2>
-                {favorites.length === 0 ? (
+                {favoritesLoading ? (
+                    <p className="text-gray-600">Chargement des favoris...</p>
+                ) : favorites.length === 0 ? (
                     <p className="text-gray-500">Aucun favori pour le moment.</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
@@ -250,7 +311,10 @@ export default function UserProfile() {
                                         <p className="text-sm text-gray-500">{f.year}</p>
                                     </div>
                                     <button
-                                        onClick={() => handleRemoveFavorite(f.id)}
+                                        onClick={() => {
+                                            setDeleteTarget({ type: "favorite", id: f.id, title: f.title });
+                                            setConfirmModalOpen(true);
+                                        }}
                                         className="text-red-600 hover:text-red-700 cursor-pointer"
                                     >
                                         <Trash2 className="w-5 h-5" />
@@ -274,20 +338,15 @@ export default function UserProfile() {
                     </button>
                 </div>
 
-                {wishlist.length === 0 ? (
+                {wishlistLoading ? (
+                    <p className="text-gray-600">Chargement de la wishlist...</p>
+                ) : wishlist.length === 0 ? (
                     <p className="text-gray-500">Aucun film dans ta wishlist.</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                         {wishlist.map((w) => (
-                            <div
-                                key={w.id}
-                                className="bg-white rounded-2xl shadow hover:shadow-lg overflow-hidden transition"
-                            >
-                                <img
-                                    src={w.posterUrl}
-                                    alt={w.title}
-                                    className="w-full h-64 object-cover"
-                                />
+                            <div key={w.id} className="bg-white rounded-2xl shadow hover:shadow-lg overflow-hidden transition">
+                                <img src={w.posterUrl} alt={w.title} className="w-full h-64 object-cover" />
                                 <div className="p-3">
                                     <div className="mb-2">
                                         <h3 className="font-semibold text-gray-800">{w.title}</h3>
@@ -298,7 +357,10 @@ export default function UserProfile() {
 
                                     <div className="flex justify-end items-center pt-2 gap-3">
                                         <button
-                                            onClick={() => handleRemoveWishlist(w.movieId)}
+                                            onClick={() => {
+                                                setDeleteTarget({ type: "wishlist", id: w.movieId, title: w.title });
+                                                setConfirmModalOpen(true);
+                                            }}
                                             className="text-red-600 hover:text-red-700 cursor-pointer"
                                         >
                                             <Trash2 className="w-5 h-5" />
@@ -316,17 +378,20 @@ export default function UserProfile() {
                     </div>
                 )}
 
-                {/* Modal pour ajouter un film */}
                 {isWishlistModalOpen && (
                     <AddWishlistModal
                         isOpen={isWishlistModalOpen}
                         onClose={() => setIsWishlistModalOpen(false)}
-                        onSuccess={() => {
-                            setIsWishlistModalOpen(false);
-                            fetchProfile();
-                        }}
+                        onSuccess={() => fetchWishlist()}
                     />
                 )}
+
+                <ConfirmDeleteModal
+                    isOpen={confirmModalOpen}
+                    onClose={() => setConfirmModalOpen(false)}
+                    onConfirm={handleConfirmDelete}
+                    title={deleteTarget.title}
+                />
             </div>
         </div>
     );
