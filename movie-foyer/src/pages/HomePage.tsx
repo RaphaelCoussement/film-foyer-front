@@ -191,13 +191,13 @@ export default function HomePage() {
                 </span>
                                         <div className="flex gap-2">
                                             <button
-                                                className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-4 shadow-lg"
+                                                className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-4 shadow-lg cursor-pointer"
                                                 onClick={() => handleVote(requests[0].id)}
                                             >
                                                 <ThumbsUp className="w-6 h-6 cursor-pointer" />
                                             </button>
                                             <button
-                                                className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-4 shadow-lg"
+                                                className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-4 shadow-lg cursor-pointer"
                                                 onClick={() => handleAddFavorite(requests[0].movie.id)}
                                             >
                                                 <Heart className="w-6 h-6 cursor-pointer" />
@@ -258,13 +258,13 @@ export default function HomePage() {
                     </span>
                                             <div className="flex gap-2">
                                                 <button
-                                                    className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md"
+                                                    className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md cursor-pointer"
                                                     onClick={() => handleVote(r.id)}
                                                 >
                                                     <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
                                                 </button>
                                                 <button
-                                                    className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-2 sm:p-3 shadow-md"
+                                                    className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-2 sm:p-3 shadow-md cursor-pointer"
                                                     onClick={() => handleAddFavorite(r.movie.id)}
                                                 >
                                                     <Heart className="w-4 h-4 sm:w-5 sm:h-5" />

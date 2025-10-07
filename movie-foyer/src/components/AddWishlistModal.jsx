@@ -1,72 +1,72 @@
 import { useState, useEffect } from "react";
-import { useRequestService } from "../services/requestService";
+import { useWishlistService } from "../services/wishlistService";
 import { useMovieService } from "../services/movieService";
 import { useAuthFetch } from "../hooks/useAuthFetch";
+import toast from "react-hot-toast";
 
-export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
+export default function AddWishlistModal({ isOpen, onClose, onSuccess }) {
     const [title, setTitle] = useState("");
-    const [selectedMovie, setSelectedMovie] = useState(null); // stockera le film complet avec GUID
+    const [selectedMovie, setSelectedMovie] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
 
-    const { createRequest } = useRequestService();
+    const { addMovie } = useWishlistService();
     const { searchMovies } = useMovieService();
     const authFetch = useAuthFetch();
 
-    // Débounce search
+    // 🔍 Recherche avec délai (debounce)
     useEffect(() => {
         if (!title) {
             setSearchResults([]);
             return;
         }
 
-        const delayDebounce = setTimeout(() => {
+        const delay = setTimeout(() => {
             handleSearch(title);
-        }, 500);
+        }, 400);
 
-        return () => clearTimeout(delayDebounce);
+        return () => clearTimeout(delay);
     }, [title]);
 
-    // Recherche via TMDb
     const handleSearch = async (query) => {
         try {
             setSearchLoading(true);
             const results = await searchMovies(query, authFetch);
             setSearchResults(results);
         } catch (err) {
-            setError(err.message);
-            setSearchResults([]);
+            console.error(err);
+            setError("Erreur lors de la recherche du film");
         } finally {
             setSearchLoading(false);
         }
     };
 
-    // Sélection du film
     const handleSelectMovie = (movie) => {
         setSelectedMovie(movie);
         setTitle(movie.title);
         setSearchResults([]);
     };
 
-    // Soumission de la demande
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedMovie) return;
+        if (!selectedMovie) {
+            toast.warning("Choisis un film avant d’ajouter 😉");
+            return;
+        }
 
         try {
             setLoading(true);
-
-            await createRequest({ TmdbId: selectedMovie.tmdbId || selectedMovie.id }, authFetch);
-
+            await addMovie({ TmdbId: selectedMovie.tmdbId || selectedMovie.id }, authFetch);
+            toast.success("Film ajouté à ta wishlist 🎬");
             setTitle("");
             setSelectedMovie(null);
             setError("");
             onSuccess?.();
             onClose();
         } catch (err) {
-            setError(err.message);
+            toast.error(err.message || "Erreur lors de l’ajout à la wishlist");
         } finally {
             setLoading(false);
         }
@@ -90,7 +90,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                         </label>
                         <input
                             type="text"
-                            placeholder="Ex: Inception"
+                            placeholder="Ex: Interstellar"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             className="border rounded-xl px-4 py-2 w-full focus:ring-2 focus:ring-[#E53A0C] outline-none transition"
@@ -106,17 +106,12 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                                         onClick={() => handleSelectMovie(movie)}
                                     >
                                         <img
-                                            src={
-                                                movie.posterUrl ||
-                                                "https://via.placeholder.com/50x75"
-                                            }
+                                            src={movie.posterUrl || "https://via.placeholder.com/50x75"}
                                             alt={movie.title}
                                             className="w-10 h-14 object-cover rounded-md"
                                         />
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-gray-800">
-                                                {movie.title}
-                                            </span>
+                                            <span className="font-medium text-gray-800">{movie.title}</span>
                                             <span className="text-gray-500 text-sm">
                                                 {movie.releaseDate
                                                     ? movie.releaseDate.slice(0, 4)
@@ -129,9 +124,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                         )}
 
                         {searchLoading && (
-                            <p className="text-gray-500 text-sm mt-2">
-                                Recherche en cours...
-                            </p>
+                            <p className="text-gray-500 text-sm mt-2">Recherche en cours...</p>
                         )}
                     </div>
 
@@ -141,7 +134,7 @@ export default function AddMovieModal({ isOpen, onClose, onSuccess }) {
                             className="flex-1 bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-xl px-4 py-2 shadow-md font-medium"
                             disabled={loading}
                         >
-                            {loading ? "⏳ Envoi..." : "Proposer"}
+                            {loading ? "⏳ Ajout..." : "Ajouter"}
                         </button>
                         <button
                             type="button"
