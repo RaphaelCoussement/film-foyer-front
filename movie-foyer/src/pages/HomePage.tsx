@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import {ThumbsUp, Plus, Trash2, X, User, Heart} from "lucide-react";
+import { ThumbsUp, ThumbsDown, Plus, Trash2, X, User, Heart } from "lucide-react";
 import { useRequestService } from "../services/requestService";
-import { approveRequest } from "../services/approvalService";
+import { approveRequest, unapproveRequest, getUserApprovals } from "../services/approvalService";
 import { useUserService } from "../services/userService";
 import AddMovieModal from "../components/AddMovieModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
@@ -25,35 +25,66 @@ export default function HomePage() {
     const isAdmin = localStorage.getItem("isAdmin") === "true";
     const currentUser = localStorage.getItem("displayName");
 
+    const [userVotes, setUserVotes] = useState([]);
+
     useEffect(() => {
         if (!token) {
             navigate("/login");
             return;
         }
-        fetchRequests();
+        fetchRequestsAndVotes();
     }, []);
 
-    const fetchRequests = async () => {
+    const fetchRequestsAndVotes = async () => {
         try {
             setLoading(true);
-            const data = await getAllRequests(authFetch);
-            setRequests(data);
+            const [requestsData, approvalsData] = await Promise.all([
+                getAllRequests(authFetch),
+                getUserApprovals(authFetch)
+            ]);
+
+            setRequests(requestsData);
+
+            setUserVotes(approvalsData);
         } catch (err) {
-            console.error(err);
+            console.error("Erreur lors du chargement :", err);
+            toast.error("Impossible de charger les données");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleVote = async (id) => {
+    const handleVoteToggle = async (id) => {
+        const hasVoted = userVotes.includes(id);
+
         try {
-            setRequests((prev) =>
-                prev.map((r) => (r.id === id ? { ...r, approvalCount: r.approvalCount + 1 } : r))
-                    .sort((a, b) => b.approvalCount - a.approvalCount)
-            );
-            await approveRequest(id, authFetch);
-            fetchRequests();
-            toast.success("Vote enregistré ✅");
+            if (hasVoted) {
+                // Dévote
+                setUserVotes((prev) => prev.filter((rId) => rId !== id));
+                setRequests((prev) =>
+                    prev
+                        .map((r) =>
+                            r.id === id ? { ...r, approvalCount: r.approvalCount - 1 } : r
+                        )
+                        .sort((a, b) => b.approvalCount - a.approvalCount)
+                );
+                await unapproveRequest(id, authFetch);
+                toast.success("Vote retiré 👎");
+            } else {
+                // Vote
+                setUserVotes((prev) => [...prev, id]);
+                setRequests((prev) =>
+                    prev
+                        .map((r) =>
+                            r.id === id ? { ...r, approvalCount: r.approvalCount + 1 } : r
+                        )
+                        .sort((a, b) => b.approvalCount - a.approvalCount)
+                );
+                await approveRequest(id, authFetch);
+                toast.success("Vote enregistré 👍");
+            }
+
+            fetchRequestsAndVotes();
         } catch (err) {
             console.error(err.message);
             toast.error("Erreur : " + err.message);
@@ -129,7 +160,7 @@ export default function HomePage() {
             <AddMovieModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchRequests}
+                onSuccess={fetchRequestsAndVotes}
             />
 
             {/* Liste des suggestions */}
@@ -145,9 +176,9 @@ export default function HomePage() {
                             <div className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/60 to-gray-900/80 rounded-3xl shadow-xl"></div>
 
                             <div className="relative flex flex-col sm:flex-row gap-6 p-6 rounded-3xl shadow-2xl bg-white/0 border-2 border-[#E53A0C] z-10">
-        <span className="absolute top-4 left-4 bg-[#E53A0C] text-white px-4 py-1 rounded-full font-bold shadow-md z-10">
-            ⭐ Le plus voté
-        </span>
+                                <span className="absolute top-4 left-4 bg-[#E53A0C] text-white px-4 py-1 rounded-full font-bold shadow-md z-10">
+                                    ⭐ Le plus voté
+                                </span>
 
                                 {/* Croix pour le créateur */}
                                 {requests[0].requestedBy === currentUser && (
@@ -176,29 +207,47 @@ export default function HomePage() {
                                         <h3 className="text-3xl sm:text-4xl font-extrabold mb-2 text-white">
                                             {requests[0].movie.title}{" "}
                                             <span className="text-gray-300 text-xl">
-                        ({requests[0].movie.year})
-                                                {requests[0].movie.duration ? ` • ${formatDuration(requests[0].movie.duration)}` : ""}
-                    </span>
+                                                ({requests[0].movie.year})
+                                                {requests[0].movie.duration
+                                                    ? ` • ${formatDuration(
+                                                        requests[0].movie.duration
+                                                    )}`
+                                                    : ""}
+                                            </span>
                                         </h3>
                                         <p className="text-gray-300 mb-3">
                                             Proposé par : {requests[0].requestedBy || "Anonyme"}
                                         </p>
-                                        <p className="text-gray-100 text-lg">{requests[0].movie.plot}</p>
+                                        <p className="text-gray-100 text-lg">
+                                            {requests[0].movie.plot}
+                                        </p>
                                     </div>
                                     <div className="flex items-center justify-between mt-6 gap-4">
-                <span className="text-yellow-400 font-bold text-xl">
-                    {requests[0].approvalCount} votes
-                </span>
+                                        <span className="text-yellow-400 font-bold text-xl">
+                                            {requests[0].approvalCount} votes
+                                        </span>
                                         <div className="flex gap-2">
                                             <button
-                                                className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-4 shadow-lg cursor-pointer"
-                                                onClick={() => handleVote(requests[0].id)}
+                                                className={`${
+                                                    userVotes.includes(requests[0].id)
+                                                        ? "bg-gray-500 hover:bg-gray-600"
+                                                        : "bg-[#E53A0C] hover:bg-[#c7320a]"
+                                                } transition text-white rounded-full p-4 shadow-lg cursor-pointer`}
+                                                onClick={() =>
+                                                    handleVoteToggle(requests[0].id)
+                                                }
                                             >
-                                                <ThumbsUp className="w-6 h-6 cursor-pointer" />
+                                                {userVotes.includes(requests[0].id) ? (
+                                                    <ThumbsDown className="w-6 h-6 cursor-pointer" />
+                                                ) : (
+                                                    <ThumbsUp className="w-6 h-6 cursor-pointer" />
+                                                )}
                                             </button>
                                             <button
                                                 className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-4 shadow-lg cursor-pointer"
-                                                onClick={() => handleAddFavorite(requests[0].movie.id)}
+                                                onClick={() =>
+                                                    handleAddFavorite(requests[0].movie.id)
+                                                }
                                             >
                                                 <Heart className="w-6 h-6 cursor-pointer" />
                                             </button>
@@ -215,7 +264,6 @@ export default function HomePage() {
                                     key={r.id}
                                     className="relative bg-white rounded-2xl p-3 sm:p-4 flex flex-col shadow-sm hover:shadow-md transition w-full"
                                 >
-                                    {/* Croix pour le créateur */}
                                     {r.requestedBy === currentUser && (
                                         <button
                                             className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600/90 hover:bg-red-700 transition text-white rounded-full p-2 shadow-md active:scale-95 cursor-pointer z-20"
@@ -241,9 +289,13 @@ export default function HomePage() {
                                             <h3 className="text-base sm:text-lg font-semibold mb-1">
                                                 {r.movie.title}{" "}
                                                 <span className="text-gray-500 text-xs sm:text-sm">
-                            ({r.movie.year})
-                                                    {r.movie.duration ? ` • ${formatDuration(r.movie.duration)}` : ""}
-                        </span>
+                                                    ({r.movie.year})
+                                                    {r.movie.duration
+                                                        ? ` • ${formatDuration(
+                                                            r.movie.duration
+                                                        )}`
+                                                        : ""}
+                                                </span>
                                             </h3>
                                             <p className="text-gray-500 text-xs sm:text-sm mb-1">
                                                 Proposé par : {r.requestedBy || "Anonyme"}
@@ -253,19 +305,31 @@ export default function HomePage() {
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-between gap-2">
-                    <span className="text-gray-700 font-medium text-sm sm:text-base">
-                        {r.approvalCount} votes
-                    </span>
+                                            <span className="text-gray-700 font-medium text-sm sm:text-base">
+                                                {r.approvalCount} votes
+                                            </span>
                                             <div className="flex gap-2">
                                                 <button
-                                                    className="bg-[#E53A0C] hover:bg-[#c7320a] transition text-white rounded-full p-2 sm:p-3 shadow-md cursor-pointer"
-                                                    onClick={() => handleVote(r.id)}
+                                                    className={`${
+                                                        userVotes.includes(r.id)
+                                                            ? "bg-gray-500 hover:bg-gray-600"
+                                                            : "bg-[#E53A0C] hover:bg-[#c7320a]"
+                                                    } transition text-white rounded-full p-2 sm:p-3 shadow-md cursor-pointer`}
+                                                    onClick={() =>
+                                                        handleVoteToggle(r.id)
+                                                    }
                                                 >
-                                                    <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    {userVotes.includes(r.id) ? (
+                                                        <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    ) : (
+                                                        <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                    )}
                                                 </button>
                                                 <button
                                                     className="bg-[#F59E0B] hover:bg-[#d97b04] transition text-white rounded-full p-2 sm:p-3 shadow-md cursor-pointer"
-                                                    onClick={() => handleAddFavorite(r.movie.id)}
+                                                    onClick={() =>
+                                                        handleAddFavorite(r.movie.id)
+                                                    }
                                                 >
                                                     <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
                                                 </button>
